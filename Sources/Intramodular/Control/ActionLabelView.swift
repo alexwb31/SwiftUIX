@@ -124,6 +124,15 @@ extension Button where Label == SwiftUI.Label<Text, Image> {
 
 extension Button: ActionLabelView {
     public init(action: Action, @ViewBuilder label: () -> Label) {
-        self.init(action: action.perform, label: label)
+        // With the iOS 18 SDK (Xcode 16), SwiftUI's Button.init(action:label:) takes a
+        // @MainActor closure, so `self.init(action: action.perform, ...)` resolves to
+        // ActionLabelView's own init(action: () -> Void, ...) instead, which calls back
+        // into this init forever. Call an overload only SwiftUI provides.
+        if #available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *) {
+            self.init(role: nil, action: action.perform, label: label)
+        } else {
+            let perform: @MainActor () -> Void = { action.perform() }
+            self.init(action: perform, label: label)
+        }
     }
 }
